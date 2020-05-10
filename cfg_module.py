@@ -8,11 +8,13 @@ import os
 def cfg_load():
     mode = 2
     win_mode = 2
+    postions = [0,0,0,0]
     first_run = True
-    fullscreenshot_keys = ['print screen','', '']
-    box_keys = ['pause', '','']
+    fullscreenshot_keys = ['print screen','', ''] # 0,1,2
+    box_keys = ['pause', '',''] # 3,4,5
+    constant_box_keys = ['home', '', ''] # 6,7,8
     file = str(dirname(sys.executable)) + '\\ '+ "settings.cfg"
-    defaults = ['Specter', fullscreenshot_keys,box_keys,mode, dirname(sys.executable),win_mode,first_run]
+    defaults = ['Specter', fullscreenshot_keys,box_keys,mode, dirname(sys.executable),win_mode,first_run,postions,constant_box_keys] # 8
     size = len(defaults)
     # defaults = ['Specter', 'ctrl', 'shift', 'print screen', str(Path().absolute())]
 

@@ -1,4 +1,6 @@
 from tkinter import *
+from tooltip_module import *
+from defines import *
 from tkinter import ttk, filedialog, messagebox
 from keyboard import wait, read_key
 from threading import Thread
@@ -9,6 +11,8 @@ from PIL import Image, ImageTk
 from systray import SysTrayIcon
 import sys
 import os
+from win32api import GetMonitorInfo, MonitorFromPoint
+
 
 
 def ask_quit(event=None):
@@ -27,6 +31,7 @@ def reload():
 
 def minimize(event=None):
     root.withdraw()
+    ti.tip_info('I will be here waiting for order! :)')
 
 
 def restore(event=None):
@@ -66,7 +71,7 @@ def listener():
         settings = cfg_load()
         root.withdraw()
         if settings[3] == 2:
-            sleep(1)
+            # sleep(1)
             screenshot_box.take_shot(settings[4])
         elif settings[3] == 1:
             sleep(1)
@@ -86,9 +91,31 @@ def listener_BOX():
         wait(keys)
         settings = cfg_load()
         root.withdraw()
-        if screenshot_box.draw_box(settings[4]) == 1:
+        if screenshot_box.draw_box(settings[4], 1) == 1:
             if settings[3] == 2:
+                pass
+                # sleep(1)
+            elif settings[3] == 1:
                 sleep(1)
+                root.deiconify()
+
+def Const_box():
+    while True:
+        settings = cfg_load()
+        if settings[8][1] == '':
+            keys = settings[8][0]
+        elif settings[8][2] == '':
+            keys = settings[8][0] + '+' + settings[8][1]
+        else:
+            keys = settings[8][0] + '+' + settings[8][1] + '+' + settings[8][2]
+        wait(keys)
+        settings = cfg_load()
+        root.withdraw()
+        if screenshot_box.take_shot(settings[4],settings[7]):
+            Sw.button_refresh()
+            if settings[3] == 2:
+                pass
+                # sleep(1)
             elif settings[3] == 1:
                 sleep(1)
                 root.deiconify()
@@ -104,6 +131,31 @@ class TrayIco:
     def kill_icon_tray(self):
         self.tray_instance.shutdown()
 
+    def tip_info(self, text = 'Example'):
+        self.text = text
+        monitor_info = GetMonitorInfo(MonitorFromPoint((0, 0)))
+        work_area = monitor_info.get("Work")
+        self.tip = Toplevel(root)
+        x1, y1 = work_area[2], work_area[3]
+        print(x1,y1)
+        # noinspection PyAttributeOutsideInit
+        self.tip.wm_overrideredirect(1)
+        self.tip.wm_geometry("+%d+%d" % (x1-340, y1-30))
+
+        label = Label(self.tip, text=self.text, justify=LEFT,
+                      foreground="white", background=theme_color, relief=SOLID, borderwidth=2,
+                      font=("tahoma", "9", "normal"))
+        label.pack(ipadx=1)
+        self.tip.after(1200, self.tip_kill)
+
+    def tip_kill(self):
+        self.tip.after(1400, lambda: self.tip.wm_attributes('-alpha', 0.6))
+        self.tip.after(1600, lambda: self.tip.wm_attributes('-alpha', 0.5))
+        self.tip.after(1800, lambda: self.tip.wm_attributes('-alpha', 0.3))
+        self.tip.after(2000, lambda: self.tip.wm_attributes('-alpha', 0.2))
+        self.tip.after(2200, lambda: self.tip.wm_attributes('-alpha', 0.1))
+        self.tip.after(2400, self.tip.destroy)
+
 
 class Switcher:
     def __init__(self, master):
@@ -111,36 +163,44 @@ class Switcher:
         self.master = master
 
         ### STYLES ###
-        style = ttk.Style(master)
+        style = ttk.Style(self.master)
         style.configure('TButton', foreground="black", background="#FFFFFF", border=10, relief="flat")
         style.configure('bar.TButton', foreground="white", background="gray", border=10, relief="flat")
-        style.configure('.', foreground="white", background="#40414d", border=0)
+        style.configure('.', foreground="white", background=theme_color, border=0)
 
 
         ### MENU BAR ###
 
-        self.menu_bar = ttk.Frame(master, height=25)
+        self.menu_bar = ttk.Frame(self.master, height=25)
         self.menu_bar.pack(side=RIGHT, fill=Y, anchor=E, expand=False)
 
         self.hide_ico = ico_open('hide.ico')
-        self.hide_B = Button(self.menu_bar, image=self.hide_ico, command=minimize, bg='#40414d', relief="flat")
+        self.hide_B = Button(self.menu_bar, image=self.hide_ico, command=minimize, bg=theme_color, relief="flat")
         self.hide_B.pack(anchor=E)
 
         self.set_ico = ico_open('settings.ico')
-        self.config_B = Button(self.menu_bar, image=self.set_ico, command=self.s_options, bg='#40414d', relief="flat")
+        self.config_B = Button(self.menu_bar, image=self.set_ico, command=self.s_options, bg=theme_color, relief="flat")
 
 
         self.ret_ico = ico_open('return.ico')
-        self.back_B = Button(self.menu_bar, image=self.ret_ico, command=self.back, bg='#40414d', relief="flat")
+        self.back_B = Button(self.menu_bar, image=self.ret_ico, command=self.back, bg=theme_color, relief="flat")
 
         self.info_ico = ico_open('info.ico')
-        self.info_B = Button(self.menu_bar, image=self.info_ico, command = self.info_trigger, bg='#40414d', relief="flat")
+        self.info_B = Button(self.menu_bar, image=self.info_ico,state=DISABLED, command = self.info_trigger, bg=theme_color, relief="flat")
         self.info_B.pack(anchor=E)
         self.config_B.pack(anchor=E)
 
+        ### Tool tips to main menu ###
+
+        CreateToolTip(self.hide_B, text='Hide me to tray ;)')
+        CreateToolTip(self.config_B, text='Main program settings')
+        CreateToolTip(self.back_B, text='Go back to main menu')
+        CreateToolTip(self.info_B, text='Info (disabled)')
+
+
         ### MAIN MENU ###
 
-        self.main_menu = ttk.Frame(master, padding=(3, 3, 12, 12))
+        self.main_menu = ttk.Frame(self.master, padding=(3, 3, 12, 12))
         self.main_menu.pack(fill=BOTH, expand=YES)
 
 
@@ -152,48 +212,76 @@ class Switcher:
                                  text='Press key [  ' + settings[2][0] + ' ' + settings[2][1] + ' ' +
                                       settings[2][2] + '] to draw screenshot box',padding=(6, 6, 16, 6))
 
+        self.packer_frame = ttk.Frame(self.main_menu, padding=(6, 6, 16, 6))
+        self.M_Lab_C = ttk.Label(self.packer_frame,
+                                 text='Press key [  ' + settings[8][0] + ' ' + settings[8][1] + ' ' +
+                                      settings[8][2] + '] to make screenshot from coordinations ' + self._repack_postions())
+
+        self.eye = ico_open('eye.ico')
+        self.draw_box = Button(self.packer_frame, image=self.eye, command=None, bg=theme_color, relief="flat")
+
+        self.draw_box.bind('<Enter>', self.bdraw)
+        self.draw_box.bind('<Leave>', self.bdestroy)
+
         self.M_Lab_A.pack(anchor=CENTER)
         self.M_Lab_B.pack(anchor = CENTER)
+        self.M_Lab_C.pack(side = LEFT)
+        self.packer_frame.pack(anchor= CENTER)
+        self.draw_box.pack(side = LEFT)
 
 
         ### OPTIONS ###
 
-        self.options = ttk.Frame(master, padding=(20, 3, 12, 12))
+        self.optionsL = ttk.Frame(self.master, padding=(2, 3, 12, 12))
+        self.optionsR = ttk.Frame(self.master, padding=(2, 3, 12, 12))
 
         self.O_Lab_F = ttk.Label(text='Save settings?')
-        self.save = ttk.LabelFrame(self.options, labelwidget=self.O_Lab_F, padding=(6, 6, 6, 6))
-        self.Lab_info = ttk.Label(self.save, text='To apply keys settings program have to reboot')
+        self.save = ttk.LabelFrame(self.optionsR, labelwidget=self.O_Lab_F, padding=(6, 6, 6, 6))
+        self.Lab_info = ttk.Label(self.save, text=info_desc_A)
         self.save_ico = ico_open('save.ico')
-        self.save_button = Button(self.save, image=self.save_ico, command=reload, bg='#40414d', relief="flat")
+        self.save_button = Button(self.save, image=self.save_ico, command=reload, bg=theme_color, relief="flat")
 
-        self.O_Lab_A = ttk.Label(text='Set screenshot hotkeys')
-        self.O_Lab_B = ttk.Label(text='Set box drawning hotkeys')
-        self.O_Lab_C = ttk.Label(text='Set Screenshot location:')
+        self.O_Lab_A = ttk.Label(text=hotkey_desc_A)
+        self.O_Lab_B = ttk.Label(text=hotkey_desc_B)
+        self.O_Lab_C = ttk.Label(text=hotkey_desc_C)
         self.O_Lab_D = ttk.Label(text='Show this window after screenshot?')
         self.O_Lab_E = ttk.Label(text='Start hidden?')
+        self.O_Lab_F = ttk.Label(text='Set predefined box hotkeys')
+        self.O_Lab_G = ttk.Label(text='Set area for predefined box')
 
-        self.col1 = ttk.LabelFrame(self.options, labelwidget=self.O_Lab_A, padding=(6, 6, 6, 6))
-
-
-
-        self.col2 = ttk.LabelFrame(self.options, labelwidget=self.O_Lab_B, padding=(6, 6, 6, 6))
-        self.col3 = ttk.LabelFrame(self.options, labelwidget=self.O_Lab_C, padding=(6, 6, 6, 6))
-        self.col4 = ttk.LabelFrame(self.options, labelwidget=self.O_Lab_D, padding=(8, 8, 8, 8))
-        self.col5 = ttk.LabelFrame(self.options, labelwidget=self.O_Lab_E, padding=(8, 8, 8, 8))
+        self.col1 = ttk.LabelFrame(self.optionsR, labelwidget=self.O_Lab_A, padding=(6, 6, 6, 6)) #keys
+        self.col2 = ttk.LabelFrame(self.optionsR, labelwidget=self.O_Lab_B, padding=(6, 6, 6, 6)) #keys
+        self.col3 = ttk.LabelFrame(self.optionsL, labelwidget=self.O_Lab_C, padding=(6, 6, 6, 6)) #save button
+        self.col4 = ttk.LabelFrame(self.optionsL, labelwidget=self.O_Lab_D, padding=(8, 8, 8, 8)) #mode
+        self.col5 = ttk.LabelFrame(self.optionsL, labelwidget=self.O_Lab_E, padding=(8, 8, 8, 8)) #mode
+        self.col6 = ttk.LabelFrame(self.optionsR, labelwidget=self.O_Lab_F, padding=(8, 8, 8, 8)) #keys
+        self.col7 = ttk.LabelFrame(self.optionsL, labelwidget=self.O_Lab_G, padding=(8, 8, 8, 8)) #area
 
         self.patch_frame = ttk.Frame(self.col3, padding=(1, 1, 6, 6))
         self.O_Lab_C1 = ttk.Label(self.patch_frame, text='Current is:')
         self.O_Lab_C2 = ttk.Label(self.col3, text='' + settings[4])
+        self.O_Lab_D1 = ttk.Label(self.col7, text='Coords: '+str(settings[7]))
+
 
         self.keysetterA = ttk.Button(self.col1, text=settings[1][0], command=lambda: self.keysetter(0))
         self.keysetterB = ttk.Button(self.col1, text=settings[1][1], command=lambda: self.keysetter(1))
         self.keysetterC = ttk.Button(self.col1, text=settings[1][2], command=lambda: self.keysetter(2))
+
         self.BOXkeysetterA = ttk.Button(self.col2, text=settings[2][0], command=lambda: self.keysetter(3))
         self.BOXkeysetterB = ttk.Button(self.col2, text=settings[2][1], command=lambda: self.keysetter(4))
         self.BOXkeysetterC = ttk.Button(self.col2, text=settings[2][2], command=lambda: self.keysetter(5))
 
+        self.Const_boxA = ttk.Button(self.col6, text=settings[8][0], command=lambda: self.keysetter(6))
+        self.Const_boxB = ttk.Button(self.col6, text=settings[8][1], command=lambda: self.keysetter(7))
+        self.Const_boxC = ttk.Button(self.col6, text=settings[8][2], command=lambda: self.keysetter(8))
+
         self.fol_ico = ico_open('F_pic.ico')
-        self.asker = Button(self.patch_frame, image=self.fol_ico, command=self.path_setter, bg='#40414d', relief="flat")
+        self.asker = Button(self.patch_frame, image=self.fol_ico, command=self.path_setter, bg=theme_color, relief="flat")
+
+        self.resize_imgA = ico_open('arrows.ico')
+        self.resize_imgB = ico_open('square.ico')
+        self.resizer = Button(self.col7, image=self.resize_imgA, command= self.link_command, bg=theme_color, relief="flat")
+        self.resizer.bind('<Enter>', self.anim_b)
 
         self.M = IntVar()
         self.M.set(int(settings[3]))
@@ -218,50 +306,115 @@ class Switcher:
         self.BOXkeysetterB.pack(side=LEFT, fill=X, expand=YES)
         self.BOXkeysetterC.pack(side=LEFT, fill=X, expand=YES)
 
-        self.col1.pack(anchor=N, fill=X, expand=YES)
-        self.col2.pack(anchor=N, fill=X, expand=YES)
+        self.Const_boxA.pack(side=LEFT, fill=X, expand=YES)
+        self.Const_boxB.pack(side=LEFT, fill=X, expand=YES)
+        self.Const_boxC.pack(side=LEFT, fill=X, expand=YES)
 
-        self.save.pack(anchor=N, fill=X, expand=YES)
+        self.col1.pack(anchor=N, fill=X, expand=YES) # fullshot setters
+        self.col2.pack(anchor=N, fill=X, expand=YES) # screenshot box setters
+        self.col6.pack(anchor=N, fill=X, expand=YES) # Constbox setters
+        self.col7.pack(anchor=N, fill=X, expand=YES)
+
+        self.save.pack(anchor=N, fill=X, expand=YES) # save button
         self.Lab_info.pack(side=LEFT)
         self.save_button.pack(side=LEFT)
+
+        self.resizer.pack(side = RIGHT)
 
         self.col3.pack(anchor=N, fill=X, expand=YES)
         self.patch_frame.pack(anchor = N,fill = X)
         self.O_Lab_C1.pack(side = LEFT)
         self.asker.pack(side = RIGHT)
         self.O_Lab_C2.pack(side = LEFT)
+        self.O_Lab_D1.pack(side=LEFT)
 
-        self.col4.pack(anchor=S, fill=X, expand=YES)
-        self.col5.pack(anchor=S, fill=X, expand=YES)
+        self.col4.pack(anchor=N,fill=X, expand=YES)
+        self.col5.pack(anchor=N,fill=X, expand=YES)
 
-        ### TUTORIAL ###
+        ### OPTIONS TIPS ###
 
-        self.info_frame_A = ttk.Frame(master, padding=(3, 3, 12, 12))
-        self.inf_lab_A = ttk.Label(self.info_frame_A, text='Here You can hide this window ->',padding=(0, 0, 0, 12))
-        self.inf_lab_B = ttk.Label(self.info_frame_A, text='\nHere You can change settings ->')
+        CreateToolTip(self.save_button, 'Save and restart')
+        CreateToolTip(self.asker, 'Change output location')
+
+        ### TUTORIAL ### # discontinued
+
+        self.info_frame_A = ttk.Frame(self.master, padding=(3, 3, 12, 12))
+        self.inf_lab_A = ttk.Label(self.info_frame_A, text='NoTHING here',padding=(0, 0, 0, 12))
+        self.inf_lab_B = ttk.Label(self.info_frame_A, text='')
         if settings[6] :
-            self.blink(self.info_B,3)
             settings[6] = False
             cfg_save(settings)
-        self.inf_lab_C = ttk.Label(self.info_frame_A, text='\n\nWhen hidden, app will work in background\n you can access menu from tray bar below\n\n')
+        self.inf_lab_C = ttk.Label(self.info_frame_A, text='')
 
 
 
         ### GEOMETRY SETTINGS ###
         self.element_height = self.M_Lab_A.winfo_reqheight()
-        self.window_width = str(self.M_Lab_A.winfo_reqwidth() + 100)
-        self.menu_height = str(self.M_Lab_A.winfo_reqheight() * 2 + 40)
+        self.window_width = str(self.M_Lab_A.winfo_reqwidth() + 400)
+        self.master.update()
+        self.menu_height = str(self.M_Lab_A.winfo_reqheight() * 3 + 40)
         master.geometry(self.window_width + 'x' + str(self.menu_height))
-        self.option_height = str(7 * (self.element_height + self.keysetterA.winfo_reqheight() + 10))
+        self.option_height = str(1 * (self.optionsL.winfo_reqheight()))
+        # self.option_height = str(8 * (self.element_height + self.keysetterA.winfo_reqheight() + 10))
         self.info_height = str(4 * (self.element_height + self.keysetterA.winfo_reqheight() + 10))
 
         if settings[5] == 1:
-            master.withdraw()
+            self.master.withdraw()
+            ti.tip_info(' ** Ready! **')
 
+    def link_command(self):
+        th = Thread(target = screenshot_box.draw_box, args=(settings[4], 2))
+        th.start()
+        th.join()
+        self.button_refresh()
+        st = cfg_load()
+        txt = str(st[7])
+        self.O_Lab_D1.config(text='Coords:' + txt)
 
-    def info_trigger(self):
+    def anim_b(self,event):
+        '''swap images'''
+        self.resizer.after(400, lambda:  self.resizer.config(image = self.resize_imgB))
+        self.resizer.after(800, lambda:  self.resizer.config(image = self.resize_imgA))
+        self.resizer.after(1200, lambda:  self.resizer.config(image = self.resize_imgB))
+        self.resizer.after(1600, lambda:  self.resizer.config(image = self.resize_imgA))
+
+    def bdraw(self,event):
+        '''draw selected area'''
+        settings = cfg_load()
+        x1,y1,x2,y2 = settings[7][0],settings[7][1],settings[7][2],settings[7][3]
+        x1 = str(x1)
+        x2 = str(x2)
+        y1 = str(y1)
+        y2 = str(y2)
+
+        # noinspection PyAttributeOutsideInit
+        self.postion_box = Toplevel(self.master)
+        self.postion_box.wm_overrideredirect(1)
+        self.postion_box.wm_geometry(x2+'x'+y2+'+'+x1+'+'+y1)
+        self.postion_box.wm_attributes('-alpha', 0.4)
+        w = Canvas(self.postion_box,background= theme_color, width = x2, height = y2)
+        w.pack()
+        self.master.focus_get()
+
+    def bdestroy(self,event):
+        '''drawed area destroy'''
+        self.postion_box.after(100, lambda: self.postion_box.wm_attributes('-alpha', 0.4))
+        self.postion_box.after(200, lambda: self.postion_box.wm_attributes('-alpha', 0.3))
+        self.postion_box.after(300, lambda: self.postion_box.wm_attributes('-alpha', 0.2))
+        self.postion_box.after(400, lambda: self.postion_box.wm_attributes('-alpha', 0.1))
+        self.postion_box.after(500, self.postion_box.destroy)
+
+    def _repack_postions(self):
+        settings = cfg_load()
+        self._r_pos = []
+        self._r_pos = settings[7][0], settings[7][1], settings[7][0] + settings[7][2], settings[7][1] + settings[7][3]
+        self._r_pos = str(self._r_pos)
+        return self._r_pos
+
+    def info_trigger(self): # discontinued
         self.main_menu.pack_forget()
-        self.options.pack_forget()
+        self.optionsL.pack_forget()
+        self.optionsR.pack_forget()
         self.back_B.pack_forget()
         self.config_B.pack(anchor=E)
         self.master.geometry(self.window_width + 'x' + self.info_height)
@@ -269,13 +422,11 @@ class Switcher:
         self.inf_lab_A.pack(anchor = NE)
         self.inf_lab_B.pack(anchor=SE, fill = Y, expand = YES)
         self.inf_lab_C.pack(anchor = CENTER, fill = Y, expand = YES)
-        self.blink(self.hide_B,4)
-        self.blink(self.config_B,4)
 
     def blink(self,button,xtimes):
         if not xtimes==0:
             button.after(500, lambda: button.config(bg= 'green'))
-            button.after(1000, lambda: button.config(bg='#40414d'))
+            button.after(1000, lambda: button.config(bg=theme_color))
             button.after(1000, lambda: self.blink(button,xtimes-1))
 
     def modesetter(self, mode, field):
@@ -289,21 +440,27 @@ class Switcher:
         self.info_frame_A.pack_forget()
         self.config_B.pack_forget()
         self.back_B.pack(anchor=E)
-        self.options.pack()
+        self.optionsL.pack(side="left", expand=True, fill="both")
+        self.optionsR.pack(side="right", expand=True, fill="both")
 
     def back(self):
         self.master.geometry(self.window_width + 'x' + str(self.menu_height))
-        self.options.pack_forget()
+        self.optionsL.pack_forget()
+        self.optionsR.pack_forget()
         self.back_B.pack_forget()
         self.config_B.pack(anchor=E)
         self.main_menu.pack(fill=BOTH, expand=YES)
 
     def keysetter(self, number):
-        if number >= 3:
+        if number < 3 and number >= 0:
+            V = 1
+        elif number > 2 and number < 6:
             V = 2
             number -= 3
-        else:
-            V = 1
+        elif number >= 6 and number < 9:
+            V = 8
+            number -= 6
+
 
         k = read_key()
         if k == 'esc':
@@ -313,21 +470,27 @@ class Switcher:
         else:
             settings[V][number] = k
 
-        if settings[V][0] == '':
+        if (settings[1][0] == settings[2][0] and settings[1][1] == settings[2][1] and settings[1][2] == settings[2][2] or
+        settings[1][0] == settings[8][0] and settings[1][1] == settings[8][1] and settings[1][2] == settings[8][2] or
+        settings[2][0] == settings[8][0] and settings[2][1] == settings[8][1] and settings[2][2] == settings[8][2]):
+            messagebox.showwarning(title='Information', message='Settings cannot have the same configuration!', icon='warning')
+            settings[1] = ['print screen', '', '']
+            settings[2] = ['pause', '', '']
+            settings[8] = ['home', '', '']
+
+        elif settings[V][0] == '':
             settings[V][1] = ''
             settings[V][2] = ''
             messagebox.showerror('Error', 'Cannot be empty!')
             if V == 1:
                 settings[V][0] = 'print screen'
-            else:
+            elif V == 2:
                 settings[V][0] = 'pause'
+            elif V == 8:
+                settings[V][0] = 'home'
 
         elif settings[V][1] == '':
             settings[V][2] = ''
-
-        elif settings[1][0] == settings[2][0] and settings[1][1] == settings[2][1] and settings[1][2] == settings[2][2]:
-            settings[1] = ['print screen', '', '']
-            settings[2] = ['pause', '', '']
 
         self.button_refresh()
         cfg_save(settings)
@@ -343,34 +506,42 @@ class Switcher:
         self.button_refresh()
 
     def button_refresh(self):
-
         self.M_Lab_A.config(text='Press key [  ' + settings[1][0] + ' ' + settings[1][1] + ' ' + settings[1][
             2] + '] to make screenshot')
         self.M_Lab_B.config(text='Press key [  ' + settings[2][0] + ' ' + settings[2][1] + ' ' + settings[2][
             2] + '] to draw screenshot box')
+        self.M_Lab_C.config(text='Press key [  ' + settings[8][0] + ' ' + settings[8][1] + ' ' +settings[8][2] + '] to make screenshot from coordinations ' +  self._repack_postions())
+
         self.keysetterA.config(text=settings[1][0])
         self.keysetterB.config(text=settings[1][1])
         self.keysetterC.config(text=settings[1][2])
         self.BOXkeysetterA.config(text=settings[2][0])
         self.BOXkeysetterB.config(text=settings[2][1])
         self.BOXkeysetterC.config(text=settings[2][2])
-        self.O_Lab_C1.config(text='Current is:\n' + settings[4])
+        self.Const_boxA.config(text=settings[8][0])
+        self.Const_boxB.config(text=settings[8][1])
+        self.Const_boxC.config(text=settings[8][2])
+        self.O_Lab_C2.config(text='' + settings[4])
+        self.O_Lab_D1.config(text='Coords:' + str(settings[7]))
 
 
 settings = cfg_load()
 
 t1 = Thread(target=listener, args=())
 t2 = Thread(target=listener_BOX, args=())
+t3 = Thread(target=Const_box, args=())
 t1.daemon = True
 t1.start()
 t2.daemon = True
 t2.start()
+t3.daemon = True
+t3.start()
 
 ti = TrayIco()
 ti.init_icon_tray()
 
 root = Tk()
-root.configure(bg='#40414d')
+root.configure(bg=theme_color)
 root.title(settings[0])
 root.iconbitmap(resource_path("ghost.ico"))
 root.resizable(width=False, height=False)
