@@ -111,14 +111,19 @@ def Const_box():
         wait(keys)
         settings = cfg_load()
         root.withdraw()
-        if screenshot_box.take_shot(settings[4],settings[7]):
-            Sw.button_refresh()
-            if settings[3] == 2:
-                pass
-                # sleep(1)
-            elif settings[3] == 1:
-                sleep(1)
-                root.deiconify()
+        if not all(settings[7]):
+            messagebox.showwarning(title='Invaild area', message='Select area first',
+                                   icon='warning')
+            root.deiconify()
+        else:
+            if screenshot_box.take_shot(settings[4],settings[7]):
+                Sw.button_refresh()
+                if settings[3] == 2:
+                    pass
+                    # sleep(1)
+                elif settings[3] == 1:
+                    sleep(1)
+                    root.deiconify()
 
 class TrayIco:
     def __init__(self):
