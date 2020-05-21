@@ -21,4 +21,4 @@ Options to customize app
 - Additional tools eg: Autoclicker
 - Autoscreenshot at screen change
 
-# DOWNLOAD LINK
+# [DOWNLOAD](https://github.com/CreatorLuXury/Specter/raw/master/Specter.exe)
