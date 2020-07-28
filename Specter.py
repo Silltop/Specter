@@ -11,9 +11,6 @@ from PIL import Image, ImageTk
 from systray import SysTrayIcon
 import sys
 import os
-from win32api import GetMonitorInfo, MonitorFromPoint
-
-
 
 def ask_quit(event=None):
     Q = messagebox.askyesno(title='Quit', message='Are you sure?', icon='warning')
@@ -70,6 +67,7 @@ def listener():
         wait(keys)
         settings = cfg_load()
         root.withdraw()
+        ti.tip_info('Taken!', (work_area[2] - 50, 0))
         if settings[3] == 2:
             # sleep(1)
             screenshot_box.take_shot(settings[4])
@@ -98,6 +96,7 @@ def listener_BOX():
             elif settings[3] == 1:
                 sleep(1)
                 root.deiconify()
+            ti.tip_info('Taken!', (work_area[2] - 50, 0))
 
 def Const_box():
     while True:
@@ -111,6 +110,7 @@ def Const_box():
         wait(keys)
         settings = cfg_load()
         root.withdraw()
+        ti.tip_info('Taken!', (work_area[2] - 50, 0))
         if not all(settings[7]):
             messagebox.showwarning(title='Invaild area', message='Select area first',
                                    icon='warning')
@@ -136,16 +136,15 @@ class TrayIco:
     def kill_icon_tray(self):
         self.tray_instance.shutdown()
 
-    def tip_info(self, text = 'Example'):
+    def tip_info(self, text = 'Example', coords = (0,0)):
         self.text = text
-        monitor_info = GetMonitorInfo(MonitorFromPoint((0, 0)))
-        work_area = monitor_info.get("Work")
         self.tip = Toplevel(root)
-        x1, y1 = work_area[2], work_area[3]
-        print(x1,y1)
-        # noinspection PyAttributeOutsideInit
+        if coords == (0,0):
+            x1, y1 = work_area[2] - 310, work_area[3] - 20
+            coords = (x1,y1)
+
         self.tip.wm_overrideredirect(1)
-        self.tip.wm_geometry("+%d+%d" % (x1-340, y1-30))
+        self.tip.wm_geometry("+%d+%d" % coords)
 
         label = Label(self.tip, text=self.text, justify=LEFT,
                       foreground="white", background=theme_color, relief=SOLID, borderwidth=2,
